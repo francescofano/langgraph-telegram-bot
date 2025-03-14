@@ -1,0 +1,15 @@
+python-telegram-bot 
+langgraph 
+langmem 
+langchain 
+langchain_community 
+asyncpg 
+psycopg2-binary
+langchain-openai
+python-dotenv
+langgraph-checkpoint-postgres
+psycopg 
+psycopg-pool
+langchain_postgres
+redis
+watchdog

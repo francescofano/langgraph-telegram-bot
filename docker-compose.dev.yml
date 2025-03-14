@@ -1,0 +1,93 @@
+version: '3.8'
+# Development configuration with hot-reload and debug settings
+
+services:
+  bot:
+    build: .
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      # Database configuration
+      - PG_CONNECTION_STRING=postgresql://langbotuser:yourpassword@postgres:5432/langbotdb
+      - REDIS_URL=redis://redis:6379/0
+      
+      # Telegram configuration
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - DEBOUNCE_TIME=${DEBOUNCE_TIME:-5.0}
+      - LLM_CALLS_PER_MINUTE=${LLM_CALLS_PER_MINUTE:-5}
+      
+      # Agent configuration
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - EMBED_MODEL=${EMBED_MODEL:-openai:text-embedding-3-small}
+      - VECTOR_DIMS=${VECTOR_DIMS:-1536}
+      
+      # API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-true}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks:
+      - bot-network
+    # Mount your code as a volume for live development
+    volumes:
+      - ./:/app
+    # Use a command that restarts when files change
+    command: sh -c "python -m pip install --user watchdog && watchmedo auto-restart --directory=/app --pattern=*.py --recursive -- python main.py"
+
+  postgres:
+    image: ankane/pgvector:latest
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=langbotuser
+      - POSTGRES_PASSWORD=yourpassword
+      - POSTGRES_DB=langbotdb
+    ports:
+      - "5432:5432"
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langbotuser -d langbotdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      
+  redis:
+    image: redis:7.2-alpine
+    command: redis-server --save 60 1 --loglevel notice  
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"  # Expose Redis port for development tools
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD", "redis-cli","--no-raw-log",  "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

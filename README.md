@@ -1,4 +1,4 @@
-# 🤖 LangMem Telegram Bot
+# 🤖 LangGraph Telegram Bot
 
 A production-ready Telegram bot with long-term memory capabilities using LangGraph, PostgreSQL vector storage, and Redis rate limiting.
 
@@ -134,18 +134,6 @@ graph TD
 # Start development environment with hot-reload
 docker-compose -f docker-compose.dev.yml up --build
 
-# Access PostgreSQL
-docker-compose exec postgres psql -U langbotuser -d langbotdb
-
-# Monitor Redis
-docker-compose exec redis redis-cli
-
-# View message aggregation in Redis
-docker-compose exec redis redis-cli keys "user:*:buffer"
-docker-compose exec redis redis-cli keys "user:*:processing"
-
-# Check rate limiting counters
-docker-compose exec redis redis-cli keys "rate:llm:*"
 ```
 
 ## Extending the Bot
@@ -214,22 +202,6 @@ docker-compose up --scale bot=3 -d
 curl http://localhost:8000/health
 ```
 
-
-## Development Commands
-
-```bash
-# Stop all containers and remove volumes
-docker-compose down -v                        
-
-# Clean up Docker resources
-docker system prune -a
-
-# Start development environment
-docker-compose -f docker-compose.dev.yml up
-
-# Restart development environment
-docker-compose down && docker-compose -f docker-compose.dev.yml up                    
-```
 
 ## PgAdmin Access
 
