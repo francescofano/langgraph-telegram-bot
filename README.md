@@ -96,22 +96,6 @@ OPENAI_API_KEY=your_openai_key
 docker-compose -f docker-compose.yml up --build
 ```
 
-## Architecture
-
-```mermaid
-graph TD
-    A[Telegram User] --> B[TelegramBot]
-    B --> C[MessageProcessor]
-    C --> D[Redis Utils]
-    D --> E[Message Buffering]
-    E --> F[Rate Limiting]
-    F --> G[AgentFactory]
-    G --> H[PostgreSQL Store]
-    G --> I[Memory Management]
-    
-    style C fill:#f9f,stroke:#333,stroke-width:2px
-    style G fill:#bbf,stroke:#333,stroke-width:2px
-```
 
 ## Configuration
 
