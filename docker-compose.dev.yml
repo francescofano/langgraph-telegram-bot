@@ -83,6 +83,26 @@ services:
       - postgres
     networks:
       - bot-network
+      
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      - PG_CONNECTION_STRING=postgresql://langbotuser:yourpassword@postgres:5432/langbotdb
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app  # Mount source code for live editing
+      - /app/node_modules  # Preserve node_modules from container
+    restart: unless-stopped
+    networks:
+      - bot-network
+    # Enable hot reload for Next.js
+    command: sh -c "npx prisma generate && npm run dev -- -H 0.0.0.0"
 
 networks:
   bot-network:

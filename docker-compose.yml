@@ -69,6 +69,21 @@ services:
       timeout: 3s
       retries: 5
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      - PG_CONNECTION_STRING=postgresql://langbotuser:yourpassword@postgres:5432/langbotdb
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - bot-network
+
 networks:
   bot-network:
     driver: bridge

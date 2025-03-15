@@ -1,0 +1,24 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Copy prisma schema
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm install
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Expose port 3000
+EXPOSE 3000
+
+# Set the command to run the development server with hot reload
+CMD ["npm", "run", "dev"]

@@ -187,6 +187,24 @@ curl http://localhost:8000/health
 ```
 
 
+# LangGraph Telegram Bot Frontend
+
+A Next.js dashboard for viewing user memories from the LangGraph Telegram Bot.
+
+## Features
+
+- View all users with stored memories
+- Browse memories for each user
+- Real-time updates using SWR
+- Responsive design with Tailwind CSS
+- Dark mode support
+- Prisma ORM for database access
+
+
+
+ 
+The application will be available at http://localhost:3000.
+
 ## PgAdmin Access
 
 Access at http://localhost:5050 and connect using:
@@ -194,6 +212,7 @@ Access at http://localhost:5050 and connect using:
 - Port: 5432
 - Username: langbotuser
 - Password: yourpassword
+
 
 
 ## License
