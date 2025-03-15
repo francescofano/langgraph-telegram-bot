@@ -157,10 +157,32 @@ class TelegramMessageProcessor(MessageProcessor):
         """
         combined = "\n".join(messages)
         try:
-            response = await self.agent.ainvoke(
-                {"messages": [{"role": "user", "content": combined}]},
-                config={"configurable": {"thread_id": user_id}},
-            )
+            # Get the agent factory from the application
+            agent_factory = getattr(self, 'agent_factory', None)
+            
+            if agent_factory:
+                # Create a user-specific agent
+                user_agent = await agent_factory.create_agent(
+                    pg_connection=self.config.pg_connection,
+                    pool=self.pool,
+                    llm_model=self.config.llm_model,
+                    vector_dims=self.config.vector_dims,
+                    embed_model=self.config.embed_model,
+                    user_id=user_id
+                )
+                # Use the user-specific agent
+                response = await user_agent.ainvoke(
+                    {"messages": [{"role": "user", "content": combined}]},
+                    config={"configurable": {"user_id": user_id, "thread_id": user_id}},
+                )
+            else:
+                # Fall back to the shared agent if agent_factory is not available
+                logger.warning(f"No agent_factory available, using shared agent for user {user_id}")
+                response = await self.agent.ainvoke(
+                    {"messages": [{"role": "user", "content": combined}]},
+                    config={"configurable": {"user_id": user_id, "thread_id": user_id}},
+                )
+            
             return response["messages"][-1].content
         except Exception as e:
             log_error(e, {"user_id": user_id, "operation": "agent_invoke"})

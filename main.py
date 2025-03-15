@@ -47,20 +47,28 @@ async def main():
             embed_model=agent_config.embed_model
         )
         
-        # Create agent
-        logger.info(f"Creating agent with model {agent_config.llm_model}")
+        # Create agent factory
+        logger.info(f"Creating agent factory with model {agent_config.llm_model}")
         agent_factory = AgentFactory()
-        agent = await agent_factory.create_agent(
+        
+        # Create a default agent (will be used as fallback) with a default user ID
+        logger.info(f"Creating default agent with model {agent_config.llm_model}")
+        default_agent = await agent_factory.create_agent(
             pg_connection=agent_config.pg_connection,
             pool=pool,
             llm_model=agent_config.llm_model,
             vector_dims=agent_config.vector_dims,
-            embed_model=agent_config.embed_model
+            embed_model=agent_config.embed_model,
+            user_id="default_user"  # Use a default user ID for the fallback agent
         )
         
         # Create and run Telegram bot
         logger.info("Starting Telegram bot")
-        telegram_bot = TelegramBot(redis, bot_config, agent, pool=pool, store=store)
+        telegram_bot = TelegramBot(redis, bot_config, default_agent, pool=pool, store=store)
+        # Add agent_factory to the message processor
+        telegram_bot.message_processor.agent_factory = agent_factory
+        telegram_bot.message_processor.config = agent_config
+        telegram_bot.message_processor.pool = pool
         await telegram_bot.run()
     except ConfigurationError as e:
         logger.critical(f"Configuration error: {str(e)}")

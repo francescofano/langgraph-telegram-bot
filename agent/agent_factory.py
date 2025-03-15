@@ -26,7 +26,8 @@ class AgentFactory:
         pool: AsyncConnectionPool,
         llm_model: str,
         vector_dims: int,
-        embed_model: str
+        embed_model: str,
+        user_id: str
     ) -> Any:
         """Initialize LangGraph agent with memory and checkpoints
         
@@ -36,52 +37,85 @@ class AgentFactory:
             llm_model: LLM model identifier
             vector_dims: Dimensions of the vector embeddings
             embed_model: Name of the embedding model
+            user_id: User identifier for memory namespace (required)
             
         Returns:
             The created agent
         """
+        if not user_id:
+            raise ValueError("user_id is required for agent creation")
+            
         checkpointer = AsyncPostgresSaver(pool)
         
         # Create the memory store with the connection pool
         store = await create_memory_store(pg_connection, pool, vector_dims, embed_model)
         
+        # Use user_id as namespace (no fallback to "memories")
+        namespace = (str(user_id),)
+        
+        # Create a closure that captures user_id
+        async def user_specific_prompt(state: Dict[str, Any]) -> list:
+            """Generate system prompt with memory context using captured user_id
+            
+            Args:
+                state: Current conversation state
+                
+            Returns:
+                List of messages with system prompt and user messages
+            """
+            nonlocal user_id, store
+            
+            logger.info(f"Using captured user_id: {user_id}")
+            
+            # Use the captured user_id directly - no need to extract from state
+            namespace = (str(user_id),)
+            
+            logger.info(f"Searching memories with namespace={namespace}, user_id={user_id}")
+            
+            try:
+                # Search for memories using the async search method
+                memories = await store.asearch(
+                    namespace,
+                    query=state["messages"][-1].content,
+                    limit=10  # Number of memories to retrieve
+                )
+                
+                logger.info(f"Found {len(memories) if memories else 0} memories for namespace={namespace}")
+                
+                # Format the memories for display with better error handling
+                if memories:
+                    memory_items = []
+                    for item in memories:
+                        try:
+                            if hasattr(item, 'value') and isinstance(item.value, dict):
+                                content = item.value.get('content', 'No content available')
+                                memory_items.append(f"- {content}")
+                            else:
+                                logger.warning(f"Unexpected memory item format: {type(item)}")
+                        except Exception as e:
+                            logger.error(f"Error processing memory item: {str(e)}")
+                    
+                    memory_content = "\n".join(memory_items)
+                else:
+                    memory_content = ""
+                    
+                logger.info(f"Memory content length: {len(memory_content)}")
+            except Exception as e:
+                logger.error(f"Error retrieving memories: {str(e)}")
+                memory_content = ""
+            
+            return [
+                {"role": "system", "content": MEMORY_SYSTEM_PROMPT.format(memory_content=memory_content)},
+                *state["messages"]
+            ]
+        
         return create_react_agent(
             f"openai:{llm_model}",
-            prompt=AgentFactory.create_prompt,
-            tools=[create_manage_memory_tool(namespace=("memories",))],
+            prompt=user_specific_prompt,  # Use the closure instead of the class method
+            tools=[create_manage_memory_tool(namespace=namespace)],
             checkpointer=checkpointer,
-            store=store,
+            store=store
         )
-    
-    @staticmethod
-    async def create_prompt(state: Dict[str, Any]) -> list:
-        """Generate system prompt with memory context
-        
-        Args:
-            state: Current conversation state
-            
-        Returns:
-            List of messages with system prompt and user messages
-        """
-        store = get_store()
-        
-        # Search for memories using the async search method
-        memories = await store.asearch(
-            ("memories",),
-            query=state["messages"][-1].content,
-            limit=10  # Number of memories to retrieve
-        )
-        
-        # Format the memories for display
-        memory_content = "\n".join([
-            f"- {item.value.get('content', '')}" 
-            for item in memories
-        ]) if memories else ""
-        
-        return [
-            {"role": "system", "content": MEMORY_SYSTEM_PROMPT.format(memory_content=memory_content)},
-            *state["messages"]
-        ]
     
     @staticmethod
     async def create_advanced_graph(
