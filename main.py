@@ -10,6 +10,7 @@ from config.bot_config import BotConfig
 from config.agent_config import AgentConfig
 from db.postgres_utils import setup_database, create_memory_store
 from agent.agent_factory import AgentFactory
+from agent.agent_manager import AgentManager
 from telegram_adapter.telegram_bot import TelegramBot
 from core.exceptions import ConfigurationError
 
@@ -51,6 +52,19 @@ async def main():
         logger.info(f"Creating agent factory with model {agent_config.llm_model}")
         agent_factory = AgentFactory()
         
+        # Create agent manager
+        logger.info("Creating agent manager")
+        agent_manager = AgentManager(
+            agent_factory=agent_factory,
+            pg_connection=agent_config.pg_connection,
+            pool=pool,
+            llm_model=agent_config.llm_model,
+            vector_dims=agent_config.vector_dims,
+            embed_model=agent_config.embed_model,
+            max_idle_time=1800,  # 30 minutes in seconds
+            cleanup_interval=300  # 5 minutes in seconds
+        )
+        
         # Create a default agent (will be used as fallback) with a default user ID
         logger.info(f"Creating default agent with model {agent_config.llm_model}")
         default_agent = await agent_factory.create_agent(
@@ -65,8 +79,8 @@ async def main():
         # Create and run Telegram bot
         logger.info("Starting Telegram bot")
         telegram_bot = TelegramBot(redis, bot_config, default_agent, pool=pool, store=store)
-        # Add agent_factory to the message processor
-        telegram_bot.message_processor.agent_factory = agent_factory
+        # Add agent_manager to the message processor
+        telegram_bot.message_processor.agent_manager = agent_manager
         telegram_bot.message_processor.config = agent_config
         telegram_bot.message_processor.pool = pool
         await telegram_bot.run()

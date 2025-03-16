@@ -157,27 +157,21 @@ class TelegramMessageProcessor(MessageProcessor):
         """
         combined = "\n".join(messages)
         try:
-            # Get the agent factory from the application
-            agent_factory = getattr(self, 'agent_factory', None)
+            # Get the agent manager from the application
+            agent_manager = getattr(self, 'agent_manager', None)
             
-            if agent_factory:
-                # Create a user-specific agent
-                user_agent = await agent_factory.create_agent(
-                    pg_connection=self.config.pg_connection,
-                    pool=self.pool,
-                    llm_model=self.config.llm_model,
-                    vector_dims=self.config.vector_dims,
-                    embed_model=self.config.embed_model,
-                    user_id=user_id
-                )
+            if agent_manager:
+                # Get or create a user-specific agent from the manager
+                user_agent = await agent_manager.get_agent(user_id)
+                
                 # Use the user-specific agent
                 response = await user_agent.ainvoke(
                     {"messages": [{"role": "user", "content": combined}]},
                     config={"configurable": {"user_id": user_id, "thread_id": user_id}},
                 )
             else:
-                # Fall back to the shared agent if agent_factory is not available
-                logger.warning(f"No agent_factory available, using shared agent for user {user_id}")
+                # Fall back to the shared agent if agent_manager is not available
+                logger.warning(f"No agent_manager available, using shared agent for user {user_id}")
                 response = await self.agent.ainvoke(
                     {"messages": [{"role": "user", "content": combined}]},
                     config={"configurable": {"user_id": user_id, "thread_id": user_id}},
@@ -259,6 +253,12 @@ class TelegramBot:
     async def shutdown(self, application: Application) -> None:
         """Cleanup resources on shutdown"""
         logger.info("Telegram bot shutting down")
+        
+        # Shutdown agent manager if it exists
+        agent_manager = getattr(self.message_processor, 'agent_manager', None)
+        if agent_manager:
+            await agent_manager.shutdown()
+            logger.info("Agent manager shut down")
     
     async def handle_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /start command"""
@@ -297,6 +297,12 @@ class TelegramBot:
         try:
             # Clear user data
             await clear_user_data(user_id, redis, pool, store)
+            
+            # Also remove the agent from the agent manager if it exists
+            agent_manager = getattr(self.message_processor, 'agent_manager', None)
+            if agent_manager:
+                await agent_manager.remove_agent(user_id)
+                logger.info(f"Removed agent for user {user_id} from agent manager")
             
             # Confirm to user
             await update.message.reply_text("Your data has been cleared. We can start fresh! 🔄")
