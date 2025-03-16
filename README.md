@@ -15,35 +15,10 @@ A production-ready Telegram bot with long-term memory capabilities using LangGra
 - 📦 **Message Aggregation** with atomic Redis operations
 - 🐳 **Dockerized** for easy deployment
 - 📈 **Production-Ready** scaling capabilities
-- 🔧 **Modular Design** with clear separation of concerns
-
-## Project Structure
+- 🔧 **Frontend Explorer** to view collected memories and user profiles
 
 
-```
-langgraph-telegram-bot/
-  ├── core/                       # Core bot architecture
-  │   ├── exceptions.py           # Common exceptions
-  │   ├── message_handler.py      # Message processing and buffering
-  │   ├── redis_utils.py          # Redis utilities for message handling
-  │   └── utils.py                # Utility functions
-  │
-  ├── agent/                      # Agent-specific code
-  │   └── agent_factory.py        # Agent creation logic
-  │
-  ├── telegram_adapter/           # Telegram-specific code
-  │   └── telegram_bot.py         # Telegram implementation
-  │
-  ├── db/                         # Database utilities
-  │   └── postgres_utils.py       # PostgreSQL connection and operations
-  │
-  ├── config/                     # Configuration
-  │   ├── base_config.py          # Shared configuration
-  │   ├── bot_config.py           # Bot-specific configuration
-  │   └── agent_config.py         # Agent-specific configuration
-  │
-  └── main.py                     # Entry point
-```
+
 
 ## Quick Start
 
